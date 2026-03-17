@@ -201,7 +201,7 @@ Runtime settings are managed through `SharedPreferences` and are configurable in
 | Reminder lead time | 10 min | Minutes before class to trigger reminder |
 | Theme mode | System | Light, dark, or follow system setting |
 
-Per-subject target percentages can also be configured individually.
+Per-subject target percentages can be configured individually.
 
 ## Testing
 
