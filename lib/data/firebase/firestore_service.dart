@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import 'package:bunk_alert/data/models/attendance_record_model.dart';
 
@@ -292,6 +293,12 @@ class FirestoreService {
     return userTimetableCollection(userId).get();
   }
 
+  Future<QuerySnapshot<Map<String, dynamic>>> getUserAttendanceRecords(
+    String userId,
+  ) {
+    return userAttendanceCollection(userId).get();
+  }
+
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchGroup(
     String groupId,
   ) {
@@ -311,6 +318,25 @@ class FirestoreService {
     return groupDoc(groupId).update({
       'members': FieldValue.arrayUnion([userId]),
     });
+  }
+
+  Future<Map<String, dynamic>> joinGroupByInviteCode({
+    required String inviteCode,
+  }) async {
+    final callable =
+        FirebaseFunctions.instance.httpsCallable('joinGroupByInviteCode');
+    final result = await callable.call(<String, dynamic>{
+      'inviteCode': inviteCode,
+    });
+    final payload = result.data;
+    if (payload is Map) {
+      return Map<String, dynamic>.from(payload as Map);
+    }
+    throw FirebaseException(
+      plugin: 'cloud_functions',
+      code: 'data-loss',
+      message: 'joinGroupByInviteCode returned an invalid payload.',
+    );
   }
 
   Future<void> removeGroupMember({
@@ -375,6 +401,13 @@ class FirestoreService {
     final query = userAttendanceCollection(userId)
         .where('subjectId', isEqualTo: subjectId);
     return _deleteByQuery(query);
+  }
+
+  Future<void> deleteAttendanceRecord({
+    required String userId,
+    required String recordId,
+  }) {
+    return userAttendanceCollection(userId).doc(recordId).delete();
   }
 
   Future<void> _deleteByQuery(

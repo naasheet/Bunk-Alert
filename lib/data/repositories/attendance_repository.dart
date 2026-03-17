@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import 'package:isar/isar.dart';
 
@@ -162,6 +163,15 @@ class AttendanceRepository {
     await isar.writeTxn(() async {
       await _localDatabaseService.attendanceRecords.delete(record.id);
     });
+    if (!AppAuthOverrides.isTest) {
+      final userId = AppAuth.currentUser?.uid;
+      if (userId != null) {
+        await _firestoreService.deleteAttendanceRecord(
+          userId: userId,
+          recordId: record.uuid,
+        );
+      }
+    }
   }
 
   Future<List<AttendanceRecordModel>> getPendingSyncRecords() {
@@ -200,5 +210,51 @@ class AttendanceRepository {
     });
 
     return pending.length;
+  }
+
+  Future<void> pullFromCloud({
+    required String userId,
+  }) async {
+    final snapshot = await _firestoreService.getUserAttendanceRecords(userId);
+    if (snapshot.docs.isEmpty) {
+      return;
+    }
+    final records = snapshot.docs.map(_recordFromDoc).toList();
+    final isar = _localDatabaseService.isar;
+    await isar.writeTxn(() async {
+      await _localDatabaseService.attendanceRecords.putAll(records);
+    });
+  }
+
+  AttendanceRecordModel _recordFromDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+    final date = _timestampToDateTime(data['date']);
+    final syncedAt = _timestampToDateTime(data['syncedAt'], fallback: date);
+    return AttendanceRecordModel(
+      uuid: doc.id,
+      subjectUuid: (data['subjectId'] as String?) ?? '',
+      timetableEntryUuid: data['timetableEntryUuid'] as String?,
+      date: AttendanceRecordModel.normalizeDate(date),
+      status: (data['status'] as String?) ?? 'present',
+      note: (data['note'] as String?)?.trim(),
+      syncStatus: 'synced',
+      createdAt: _timestampToDateTime(data['createdAt'], fallback: syncedAt),
+      updatedAt: _timestampToDateTime(data['updatedAt'], fallback: syncedAt),
+    );
+  }
+
+  DateTime _timestampToDateTime(
+    Object? value, {
+    DateTime? fallback,
+  }) {
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    if (value is DateTime) {
+      return value;
+    }
+    return fallback ?? DateTime.now();
   }
 }

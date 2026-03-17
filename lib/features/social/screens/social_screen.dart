@@ -63,15 +63,15 @@ class _SocialScreenState extends State<SocialScreen> {
               'Compare attendance with classmates.',
               style: AppTextStyles.caption(
                 palette,
-              ).copyWith(color: const Color(0xFF444444)),
+              ).copyWith(color: palette.textSecondary),
             ),
             const SizedBox(height: 24),
             Text(
               'YOUR GROUPS',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 letterSpacing: 0.8,
-                color: Color(0xFF444444),
+                color: palette.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -94,7 +94,7 @@ class _SocialScreenState extends State<SocialScreen> {
                       'No groups yet. Create one to get started.',
                       style: AppTextStyles.bodySmall(
                         palette,
-                      ).copyWith(color: const Color(0xFF888888)),
+                      ).copyWith(color: palette.textSecondary),
                     ),
                   );
                 }
@@ -129,7 +129,7 @@ class _SocialScreenState extends State<SocialScreen> {
             Text(
               'Start a new study group and invite friends to compare attendance.',
               style: AppTextStyles.bodySmall(palette).copyWith(
-                color: const Color(0xFF444444),
+                color: palette.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -148,7 +148,7 @@ class _SocialScreenState extends State<SocialScreen> {
             Text(
               'Enter an invite code shared by a friend.',
               style: AppTextStyles.bodySmall(palette).copyWith(
-                color: const Color(0xFF444444),
+                color: palette.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -305,9 +305,9 @@ class _GroupCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF111111),
+          color: palette.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF1E1E1E), width: 0.5),
+          border: Border.all(color: palette.border, width: 0.5),
         ),
         child: Row(
           children: [
@@ -320,26 +320,29 @@ class _GroupCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           group.name,
-                          style: const TextStyle(
-                            color: Color(0xFFEDEDED),
+                          style: TextStyle(
+                            color: palette.textPrimary,
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      const Icon(Icons.chevron_right, color: Color(0xFF444444)),
+                      Icon(
+                        Icons.chevron_right,
+                        color: palette.textSecondary,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
                     '${group.memberCount} members',
-                    style: const TextStyle(
-                      color: Color(0xFF444444),
+                    style: TextStyle(
+                      color: palette.textSecondary,
                       fontSize: 11,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(height: 0.5, color: const Color(0xFF1E1E1E)),
+                  Container(height: 0.5, color: palette.border),
                   const SizedBox(height: 12),
                   _TopMembersRow(
                     repository: repository,
@@ -386,13 +389,16 @@ class _TopMembersRow extends StatelessWidget {
               label: visibleMembers.isEmpty
                   ? '?'
                   : _initials(visibleMembers.first.displayName),
-              backgroundColor: const Color(0xFF1A3A25),
-              textColor: const Color(0xFF4CAF72),
+              backgroundColor: palette.safeSubtle,
+              textColor: palette.safe,
             ),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Top members',
-              style: TextStyle(color: Color(0xFF888888), fontSize: 12),
+              style: TextStyle(
+                color: palette.textSecondary,
+                fontSize: 12,
+              ),
             ),
           ],
         );
@@ -479,23 +485,26 @@ class _CreateGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = Theme.of(context).brightness == Brightness.dark
+        ? AppColors.dark
+        : AppColors.light;
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF111111),
+          color: palette.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF1E1E1E), width: 0.5),
+          border: Border.all(color: palette.border, width: 0.5),
         ),
         child: Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 'Create Group',
                 style: TextStyle(
-                  color: Color(0xFFF0F0F0),
+                  color: palette.textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -505,10 +514,14 @@ class _CreateGroupCard extends StatelessWidget {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
+                color: palette.surfaceElevated,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.add, color: Color(0xFF888888), size: 18),
+              child: Icon(
+                Icons.add,
+                color: palette.textSecondary,
+                size: 18,
+              ),
             ),
           ],
         ),
@@ -530,12 +543,15 @@ class _JoinGroupField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = Theme.of(context).brightness == Brightness.dark
+        ? AppColors.dark
+        : AppColors.light;
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
       decoration: BoxDecoration(
-        color: const Color(0xFF111111),
+        color: palette.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF1E1E1E), width: 0.5),
+        border: Border.all(color: palette.border, width: 0.5),
       ),
       child: Row(
         children: [
@@ -543,31 +559,35 @@ class _JoinGroupField extends StatelessWidget {
             child: TextField(
               controller: controller,
               textInputAction: TextInputAction.done,
-              style: const TextStyle(color: Color(0xFFF0F0F0), fontSize: 13),
-              decoration: const InputDecoration(
+              style: TextStyle(color: palette.textPrimary, fontSize: 13),
+              decoration: InputDecoration(
                 hintText: 'Invite code',
-                hintStyle: TextStyle(color: Color(0xFF444444), fontSize: 13),
+                hintStyle:
+                    TextStyle(color: palette.textSecondary, fontSize: 13),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.all(14),
+                contentPadding: const EdgeInsets.all(14),
               ),
               onSubmitted: (_) => onSubmit(),
             ),
           ),
-          Container(width: 0.5, height: 28, color: const Color(0xFF1E1E1E)),
+          Container(width: 0.5, height: 28, color: palette.border),
           InkWell(
             onTap: isLoading ? null : onSubmit,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(palette.safe),
+                      ),
                     )
-                  : const Text(
+                  : Text(
                       'Join',
                       style: TextStyle(
-                        color: Color(0xFF4CAF72),
+                        color: palette.safe,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),

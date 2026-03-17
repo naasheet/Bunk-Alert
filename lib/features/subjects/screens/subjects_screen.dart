@@ -238,24 +238,23 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF111111),
+                    color: palette.surface,
                     borderRadius:
                         BorderRadius.circular(AppSpacing.cardRadius),
-                    border:
-                        Border.all(color: const Color(0xFF1E1E1E), width: 0.5),
+                    border: Border.all(color: palette.border, width: 0.5),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.edit_outlined,
-                        color: Color(0xFFEDEDED),
+                        color: palette.textPrimary,
                       ),
                       const SizedBox(width: AppSpacing.xs),
                       Text(
                         'Edit',
-                        style: const TextStyle(
-                          color: Color(0xFFEDEDED),
+                        style: TextStyle(
+                          color: palette.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -585,6 +584,9 @@ class _SubjectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = Theme.of(context).brightness == Brightness.dark
+        ? AppColors.dark
+        : AppColors.light;
     final percent = stats.currentPercentage.clamp(0, 100).toDouble();
     final total = (expectedTotalClasses ?? 0) > 0
         ? expectedTotalClasses!
@@ -592,15 +594,16 @@ class _SubjectCard extends StatelessWidget {
     final hasData = stats.conducted > 0;
     final displayPercent = hasData ? percent : 0.0;
     final isAtRisk = hasData && stats.currentPercentage < stats.targetPercentage;
-    const cardBackground = Color(0xFF111111);
-    final borderColor =
-        isAtRisk ? const Color(0xFF2A1818) : const Color(0xFF1E1E1E);
-    const mutedText = Color(0xFF8A8A8A);
-    const lightText = Color(0xFFEDEDED);
+    final cardBackground = palette.surface;
+    final borderColor = isAtRisk
+        ? Color.alphaBlend(palette.danger.withOpacity(0.22), palette.border)
+        : palette.border;
+    final mutedText = palette.textSecondary;
+    final lightText = palette.textPrimary;
     final percentColor = hasData
-        ? (isAtRisk ? const Color(0xFFD95555) : const Color(0xFF4CAF72))
-        : const Color(0xFF8A8A8A);
-    final badge = _BunkBadge.fromStats(stats);
+        ? (isAtRisk ? palette.danger : palette.safe)
+        : palette.textSecondary;
+    final badge = _BunkBadge.fromStats(stats, palette: palette);
 
     return InkWell(
       borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
@@ -624,7 +627,7 @@ class _SubjectCard extends StatelessWidget {
                     children: [
                       Text(
                         stats.subjectName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: lightText,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -633,7 +636,7 @@ class _SubjectCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Attended ${stats.attended} of $total',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: mutedText,
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
@@ -667,6 +670,7 @@ class _SubjectCard extends StatelessWidget {
             _SubjectProgressBar(
               percent: displayPercent,
               color: percentColor,
+              trackColor: palette.surfaceElevated,
               animate: animateCharts,
             ),
             const SizedBox(height: 16),
@@ -676,8 +680,12 @@ class _SubjectCard extends StatelessWidget {
                   child: _CounterGroup(
                     label: 'Present',
                     count: presentCount,
-                    plusColor: const Color(0xFF4CAF72),
-                    minusColor: const Color(0xFF8A8A8A),
+                    plusColor: palette.safe,
+                    minusColor: palette.textSecondary,
+                    labelColor: palette.textSecondary,
+                    pillBackgroundColor: palette.surfaceElevated,
+                    pillBorderColor: palette.border,
+                    pillTextColor: palette.textPrimary,
                     isBusy: isMarking,
                     onIncrement: onIncPresent,
                     onDecrement: onDecPresent,
@@ -688,8 +696,12 @@ class _SubjectCard extends StatelessWidget {
                   child: _CounterGroup(
                     label: 'Absent',
                     count: absentCount,
-                    plusColor: const Color(0xFFD95555),
-                    minusColor: const Color(0xFF8A8A8A),
+                    plusColor: palette.danger,
+                    minusColor: palette.textSecondary,
+                    labelColor: palette.textSecondary,
+                    pillBackgroundColor: palette.surfaceElevated,
+                    pillBorderColor: palette.border,
+                    pillTextColor: palette.textPrimary,
                     isBusy: isMarking,
                     onIncrement: onIncAbsent,
                     onDecrement: onDecAbsent,
@@ -708,11 +720,13 @@ class _SubjectProgressBar extends StatelessWidget {
   const _SubjectProgressBar({
     required this.percent,
     required this.color,
+    required this.trackColor,
     required this.animate,
   });
 
   final double percent;
   final Color color;
+  final Color trackColor;
   final bool animate;
 
   @override
@@ -727,7 +741,7 @@ class _SubjectProgressBar extends StatelessWidget {
             Container(
               height: 8,
               decoration: BoxDecoration(
-                color: const Color(0xFF2A2A2A),
+                color: trackColor,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -763,7 +777,7 @@ class _SubjectProgressBar extends StatelessWidget {
                     Container(
                       height: 8,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A2A),
+                        color: trackColor,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -793,6 +807,10 @@ class _CounterGroup extends StatelessWidget {
     required this.count,
     required this.plusColor,
     required this.minusColor,
+    required this.labelColor,
+    required this.pillBackgroundColor,
+    required this.pillBorderColor,
+    required this.pillTextColor,
     required this.isBusy,
     required this.onIncrement,
     required this.onDecrement,
@@ -802,6 +820,10 @@ class _CounterGroup extends StatelessWidget {
   final int count;
   final Color plusColor;
   final Color minusColor;
+  final Color labelColor;
+  final Color pillBackgroundColor;
+  final Color pillBorderColor;
+  final Color pillTextColor;
   final bool isBusy;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
@@ -814,8 +836,8 @@ class _CounterGroup extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF8A8A8A),
+            style: TextStyle(
+              color: labelColor,
               fontSize: 13,
               fontWeight: FontWeight.w400,
             ),
@@ -825,6 +847,9 @@ class _CounterGroup extends StatelessWidget {
             count: count,
             plusColor: plusColor,
             minusColor: minusColor,
+            backgroundColor: pillBackgroundColor,
+            borderColor: pillBorderColor,
+            textColor: pillTextColor,
             onIncrement: isBusy ? null : onIncrement,
             onDecrement: isBusy ? null : onDecrement,
           ),
@@ -839,6 +864,9 @@ class _StepperPill extends StatelessWidget {
     required this.count,
     required this.plusColor,
     required this.minusColor,
+    required this.backgroundColor,
+    required this.borderColor,
+    required this.textColor,
     required this.onIncrement,
     required this.onDecrement,
   });
@@ -846,6 +874,9 @@ class _StepperPill extends StatelessWidget {
   final int count;
   final Color plusColor;
   final Color minusColor;
+  final Color backgroundColor;
+  final Color borderColor;
+  final Color textColor;
   final VoidCallback? onIncrement;
   final VoidCallback? onDecrement;
 
@@ -853,9 +884,9 @@ class _StepperPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF2A2A2A), width: 0.5),
+        border: Border.all(color: borderColor, width: 0.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -870,8 +901,8 @@ class _StepperPill extends StatelessWidget {
             child: Center(
               child: Text(
                 count.toString(),
-                style: const TextStyle(
-                  color: Color(0xFFEDEDED),
+                style: TextStyle(
+                  color: textColor,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -998,26 +1029,29 @@ class _BunkBadge {
   final Color textColor;
   final Color background;
 
-  static _BunkBadge fromStats(AttendanceStatsEntity stats) {
+  static _BunkBadge fromStats(
+    AttendanceStatsEntity stats, {
+    required AppColorPalette palette,
+  }) {
     if (stats.conducted == 0) {
-      return const _BunkBadge(
+      return _BunkBadge(
         label: 'No data yet',
-        textColor: Color(0xFF8A8A8A),
-        background: Color(0xFF1A1A1A),
+        textColor: palette.textSecondary,
+        background: palette.surfaceElevated,
       );
     }
     if (stats.classesNeededToReachTarget > 0) {
       return _BunkBadge(
         label: 'Attend ${stats.classesNeededToReachTarget} more',
-        textColor: const Color(0xFFD95555),
-        background: const Color(0xFF2A1818),
+        textColor: palette.danger,
+        background: palette.dangerSubtle,
       );
     }
     final skips = stats.classesSafeToSkip < 0 ? 0 : stats.classesSafeToSkip;
     return _BunkBadge(
       label: 'Can skip $skips',
-      textColor: const Color(0xFF4CAF72),
-      background: const Color(0xFF132318),
+      textColor: palette.safe,
+      background: palette.safeSubtle,
     );
   }
 }

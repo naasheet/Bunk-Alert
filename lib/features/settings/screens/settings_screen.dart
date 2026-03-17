@@ -56,6 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isExporting = false;
   bool _isBackingUp = false;
   bool _isResetting = false;
+  bool _isClearingLocal = false;
 
   @override
   void initState() {
@@ -231,6 +232,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: 'Backup to Cloud',
                       isLoading: _isBackingUp,
                       onTap: _backupToCloud,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _ActionTile(
+                      icon: Icons.delete_sweep_outlined,
+                      label: 'Clear Local Data',
+                      isLoading: _isClearingLocal,
+                      onTap: _confirmClearLocal,
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     _SectionHeader(title: 'Danger Zone'),
@@ -490,6 +498,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _resetAllData();
   }
 
+  Future<void> _confirmClearLocal() async {
+    if (_isClearingLocal) {
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return const ConfirmationDialog(
+              title: 'Clear local data?',
+              message:
+                  'This removes subjects, timetable, and attendance from this device only.',
+              confirmLabel: 'Clear',
+              isDestructive: true,
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) {
+      return;
+    }
+
+    await _clearLocalData();
+  }
+
+  Future<void> _clearLocalData() async {
+    setState(() {
+      _isClearingLocal = true;
+    });
+    try {
+      final isar = _localDatabaseService.isar;
+      await isar.writeTxn(() async {
+        await isar.clear();
+      });
+      await _scheduler.cancelClassReminders();
+      await _scheduler.cancelRiskAlerts();
+      _showSnack('Local data cleared.');
+    } catch (_) {
+      _showSnack('Unable to clear local data.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isClearingLocal = false;
+        });
+      }
+    }
+  }
+
   Future<void> _resetAllData() async {
     setState(() {
       _isResetting = true;
@@ -504,12 +560,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _scheduler.cancelClassReminders();
       await _scheduler.cancelRiskAlerts();
 
+      var cloudDeleteDenied = false;
       if (userId != null) {
-        await _clearFirestoreData(userId);
+        try {
+          await _clearFirestoreData(userId);
+        } on FirebaseException catch (error) {
+          if (error.code == 'permission-denied') {
+            cloudDeleteDenied = true;
+          } else {
+            rethrow;
+          }
+        }
       }
 
       if (!mounted) {
         return;
+      }
+      if (cloudDeleteDenied) {
+        _showSnack(
+          'Local data cleared. Cloud data could not be cleared (permission denied).',
+        );
       }
       context.go(RouteNames.home);
     } on FirebaseException catch (error) {

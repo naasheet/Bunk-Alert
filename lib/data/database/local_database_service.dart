@@ -125,7 +125,13 @@ class LocalDatabaseService {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final key = 'legacy_migrated_$userId';
+    final legacyOwnerKey = 'legacy_owner_user_id';
     if (prefs.getBool(key) == true) {
+      return;
+    }
+    final legacyOwner = prefs.getString(legacyOwnerKey);
+    if (legacyOwner != null && legacyOwner != userId) {
+      await prefs.setBool(key, true);
       return;
     }
 
@@ -134,6 +140,9 @@ class LocalDatabaseService {
     if (!await legacyFile.exists()) {
       await prefs.setBool(key, true);
       return;
+    }
+    if (legacyOwner == null) {
+      await prefs.setString(legacyOwnerKey, userId);
     }
 
     final target = _isar;
@@ -189,6 +198,7 @@ class LocalDatabaseService {
           await target.attendanceRecordModels.putAll(records);
         }
       });
+      await prefs.setString(legacyOwnerKey, userId);
     } catch (_) {
       // Ignore migration failures; user can continue with a fresh db.
     } finally {

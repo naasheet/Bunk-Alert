@@ -442,16 +442,50 @@ class StudyGroupRepository {
     if (code.isEmpty) {
       throw StudyGroupFailure('Enter a valid invite code.');
     }
-    final snapshot = await _firestoreService.getGroup(code);
-    final data = snapshot.data();
-    if (!snapshot.exists || data == null) {
-      throw StudyGroupFailure('Invite code not found.');
+    try {
+      final snapshot = await _firestoreService.getGroup(code);
+      final data = snapshot.data();
+      if (!snapshot.exists || data == null) {
+        throw StudyGroupFailure('Invite code not found.');
+      }
+      await _firestoreService.addGroupMember(
+        groupId: code,
+        userId: user.uid,
+      );
+      final refreshed = await _firestoreService.getGroup(code);
+      final refreshedData = refreshed.data();
+      if (!refreshed.exists || refreshedData == null) {
+        throw StudyGroupFailure('Invite code not found.');
+      }
+      return StudyGroupModel.fromMap(id: refreshed.id, data: refreshedData);
+    } on FirebaseException catch (error) {
+      if (error.code != 'permission-denied') {
+        rethrow;
+      }
     }
-    await _firestoreService.addGroupMember(
-      groupId: code,
-      userId: user.uid,
-    );
-    return StudyGroupModel.fromMap(id: snapshot.id, data: data);
+    try {
+      final payload = await _firestoreService.joinGroupByInviteCode(
+        inviteCode: code,
+      );
+      final groupId = (payload['groupId'] as String?)?.trim();
+      final data = Map<String, dynamic>.from(payload)
+        ..remove('groupId');
+      return StudyGroupModel.fromMap(
+        id: groupId?.isNotEmpty == true ? groupId! : code,
+        data: data,
+      );
+    } on FirebaseException catch (error) {
+      if (error.code == 'not-found' &&
+          (error.message ?? '').toLowerCase().contains('invite code')) {
+        throw StudyGroupFailure('Invite code not found.');
+      }
+      if (error.code == 'not-found') {
+        throw StudyGroupFailure(
+          'Join service is not deployed. Deploy Cloud Functions and retry.',
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<void> leaveGroup({

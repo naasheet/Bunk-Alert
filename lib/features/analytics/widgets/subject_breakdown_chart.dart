@@ -37,10 +37,23 @@ class SubjectBreakdownChart extends StatelessWidget {
       );
     }
 
+    double normalizePercent(double value) {
+      if (value.isNaN || value.isInfinite) {
+        return 0.0;
+      }
+      return value.clamp(0.0, 100.0);
+    }
+
     final maxPercent = stats
-        .map((entry) => entry.currentPercentage)
+        .map((entry) => normalizePercent(entry.currentPercentage))
         .fold<double>(0, math.max);
-    final maxY = math.max(100.0, math.max(maxPercent, targetPercentage));
+    final clampedTarget = normalizePercent(targetPercentage);
+    final maxY = math.max(100.0, math.max(maxPercent, clampedTarget));
+    final noDataCount =
+        stats.where((entry) => entry.conducted == 0).length;
+    const barSlotWidth = 64.0;
+    const barWidth = 20.0;
+    const chartHeight = 240.0;
 
     List<BarChartGroupData> buildGroups(double factor) {
       final groups = <BarChartGroupData>[];
@@ -51,16 +64,19 @@ class SubjectBreakdownChart extends StatelessWidget {
           entry.currentPercentage,
           entry.targetPercentage,
         );
+        final percent = normalizePercent(entry.currentPercentage);
         groups.add(
           BarChartGroupData(
             x: i,
             barRods: [
               BarChartRodData(
                 fromY: 0,
-                toY: entry.currentPercentage * factor,
-                width: 14,
+                toY: percent * factor,
+                width: barWidth,
                 color: color,
-                borderRadius: BorderRadius.zero,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(4),
+                ),
               ),
             ],
             showingTooltipIndicators: const [0],
@@ -70,81 +86,111 @@ class SubjectBreakdownChart extends StatelessWidget {
       return groups;
     }
 
-    final height = math.max(140.0, stats.length * 44.0);
-
     Widget buildChart(double factor) {
-      return RotatedBox(
-        quarterTurns: 1,
-        child: BarChart(
-          BarChartData(
-            minY: 0,
-            maxY: maxY,
-            barGroups: buildGroups(factor),
-            gridData: FlGridData(show: false),
-            borderData: FlBorderData(show: false),
-            alignment: BarChartAlignment.spaceBetween,
-            extraLinesData: ExtraLinesData(
-              horizontalLines: [
-                HorizontalLine(
-                  y: targetPercentage,
-                  color: palette.textTertiary,
-                  strokeWidth: 1,
-                  dashArray: [4, 4],
-                ),
-              ],
+      return BarChart(
+        BarChartData(
+          minY: 0,
+          maxY: maxY,
+          barGroups: buildGroups(factor),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: palette.border,
+              strokeWidth: 0.5,
             ),
-            titlesData: FlTitlesData(
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+          ),
+          borderData: FlBorderData(show: false),
+          alignment: BarChartAlignment.spaceAround,
+          extraLinesData: ExtraLinesData(
+            horizontalLines: [
+              HorizontalLine(
+                y: clampedTarget,
+                color: palette.textTertiary,
+                strokeWidth: 1,
+                dashArray: [4, 4],
               ),
-              rightTitles: AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 90,
-                  getTitlesWidget: (value, meta) {
-                    final index = value.toInt();
-                    if (index < 0 || index >= stats.length) {
-                      return const SizedBox.shrink();
-                    }
-                    return RotatedBox(
-                      quarterTurns: -1,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: Text(
-                          stats[index].subjectName,
-                          style: AppTextStyles.caption(palette),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            barTouchData: BarTouchData(
-              enabled: true,
-              touchTooltipData: BarTouchTooltipData(
-                tooltipPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                tooltipMargin: 6,
-                getTooltipColor: (_) => palette.surface,
-                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                  final value = rod.toY.round();
-                  return BarTooltipItem(
-                    '$value%',
-                    AppTextStyles.caption(palette)
-                        .copyWith(color: palette.textPrimary),
+            ],
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                interval: 25,
+                getTitlesWidget: (value, meta) {
+                  final rounded = value.round();
+                  final isWhole = (value - rounded).abs() < 0.001;
+                  if (!isWhole || rounded % 25 != 0) {
+                    return const SizedBox.shrink();
+                  }
+                  return Text(
+                    '$rounded',
+                    style: AppTextStyles.caption(palette)
+                        .copyWith(color: palette.textTertiary),
                   );
                 },
               ),
+            ),
+            rightTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 56,
+                getTitlesWidget: (value, meta) {
+                  final rounded = value.round();
+                  if ((value - rounded).abs() >= 0.001) {
+                    return const SizedBox.shrink();
+                  }
+                  final index = rounded;
+                  if (index < 0 || index >= stats.length) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.xs),
+                    child: SizedBox(
+                      width: barSlotWidth - 8,
+                      child: Text(
+                        stats[index].subjectName,
+                        style: AppTextStyles.caption(palette)
+                            .copyWith(color: palette.textSecondary),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              tooltipMargin: 6,
+              getTooltipColor: (_) => palette.surface,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final hasData = stats[groupIndex].conducted > 0;
+                if (!hasData) {
+                  return null;
+                }
+                final value = rod.toY.round();
+                final label = '$value%';
+                return BarTooltipItem(
+                  label,
+                  AppTextStyles.caption(palette)
+                      .copyWith(color: palette.textPrimary),
+                );
+              },
             ),
           ),
         ),
@@ -153,18 +199,42 @@ class SubjectBreakdownChart extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-      child: SizedBox(
-        height: height,
-        child: Animate(
-          effects: [
-            CustomEffect(
-              duration: 1000.ms,
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) => buildChart(value),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final minChartWidth = constraints.maxWidth;
+              final neededChartWidth = stats.length * barSlotWidth;
+              final chartWidth = math.max(minChartWidth, neededChartWidth);
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: chartWidth,
+                  height: chartHeight,
+                  child: Animate(
+                    effects: [
+                      CustomEffect(
+                        duration: 1000.ms,
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, _) => buildChart(value),
+                      ),
+                    ],
+                    child: buildChart(1),
+                  ),
+                ),
+              );
+            },
+          ),
+          if (noDataCount > 0) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'No data for $noDataCount subject${noDataCount == 1 ? '' : 's'} yet.',
+              style: AppTextStyles.caption(palette)
+                  .copyWith(color: palette.textTertiary),
             ),
           ],
-          child: buildChart(1),
-        ),
+        ],
       ),
     );
   }
